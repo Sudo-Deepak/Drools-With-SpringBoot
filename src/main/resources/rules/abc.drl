@@ -1,0 +1,101 @@
+import com.deepak.droolsdemo.dto.User;
+import com.deepak.droolsdemo.dto.Xyz;
+import java.util.List;
+import java.util.ArrayList;
+global com.deepak.droolsdemo.dto.Response res;
+
+dialect "mvel"
+
+rule "first"
+    when
+        $user : User(invested > 100)
+    then
+        System.out.println("Check passed!");
+        System.out.println($user);
+        System.out.println(res);
+        res.setInvested($user.getInvested());
+        res.setDirection($user.getAction());
+end
+
+rule "second"
+    when
+        $xyz : Xyz(users != null, users.size() > 0);
+    then
+        // Find user with highest investment
+        User highestInvestmentUser = null;
+        int highestInvestment = Integer.MIN_VALUE;
+
+        for (User user : $xyz.getUsers()) {
+            System.out.println("In iteration");
+            if (user.getInvested() > highestInvestment) {
+                highestInvestment = user.getInvested();
+                highestInvestmentUser = user;
+            }
+        }
+
+        if (highestInvestmentUser != null) {
+            System.out.println("Highest Investment User: " + highestInvestmentUser);
+            res.setInvested(highestInvestmentUser.getInvested());
+            res.setDirection(highestInvestmentUser.getAction());
+        } else {
+            System.out.println("No users found with positive investment.");
+        }
+end
+
+//Most optimized code
+import com.deepak.droolsdemo.dto.User;
+import com.deepak.droolsdemo.dto.Xyz;
+import com.deepak.droolsdemo.dto.Response;
+import java.lang.Integer;
+
+global com.deepak.droolsdemo.dto.Response res;
+
+dialect "java"
+
+rule "Find User With Highest Investment"
+    when
+        $xyz : Xyz(users != null, users.size() > 0)
+    then
+        long currentTime = System.currentTimeMillis();
+        System.out.println(currentTime);
+        // Find the user with the highest investment
+        User userWithHighestInvestment = $xyz
+            .getUsers()
+            .stream()
+//            .filter(u -> u.getExpireAt().getTime() > currentTime && u.getExpireAt().getTime() < currentTime + 1000)
+            .max((u1, u2) -> Integer.compare(u1.getInvested(), u2.getInvested()))
+            .orElse(null);
+
+        if (null != userWithHighestInvestment) {
+            res.setInvested(userWithHighestInvestment.getInvested());
+            res.setDirection(userWithHighestInvestment.getAction());
+        }
+end
+
+//most optimized
+import com.deepak.droolsdemo.dto.User;
+import com.deepak.droolsdemo.dto.Xyz;
+import com.deepak.droolsdemo.dto.Response;
+import java.lang.Integer;
+
+global com.deepak.droolsdemo.dto.Response res;
+
+dialect "mvel"
+
+rule "Find User With Highest Investment"
+    when
+        $xyz : Xyz(users != null, users.size() > 0)
+        $userWithHighestInvestment : User() from accumulate(
+            $user : User(entry > 95, invested > 0) from $xyz.users,
+            init( User maxUser = null; int maxInvestment = 0; ),
+            action( if ($user.getInvested() > maxInvestment) { maxInvestment = $user.getInvested(); maxUser = $user; } ),
+            reverse( if ($user == maxUser) { maxUser = null; maxInvestment = 0; } ),
+            result( maxUser )
+        )
+    then
+        if ($userWithHighestInvestment != null) {
+            System.out.println($userWithHighestInvestment);
+            res.setInvested($userWithHighestInvestment.getInvested());
+            res.setDirection($userWithHighestInvestment.getAction());
+        }
+end

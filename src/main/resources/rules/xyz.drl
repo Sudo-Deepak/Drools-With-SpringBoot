@@ -1,0 +1,26 @@
+import com.deepak.droolsdemo.dto.User;
+import com.deepak.droolsdemo.dto.Xyz;
+import com.deepak.droolsdemo.dto.Response;
+import java.lang.Integer;
+
+global com.deepak.droolsdemo.dto.Response res;
+
+dialect "mvel"
+
+rule "Find User With Highest Investment"
+    when
+        $xyz : Xyz()
+        $userWithHighestInvestment : User() from accumulate(
+            $user : User(entry > 95, invested > 0) from $xyz.users,
+            init( User maxUser = null; int maxInvestment = 0; ),
+            action( if ($user.getInvested() > maxInvestment) { maxInvestment = $user.getInvested(); maxUser = $user; } ),
+            reverse( if ($user == maxUser) { maxUser = null; maxInvestment = 0; } ),
+            result( maxUser )
+        )
+    then
+        if ($userWithHighestInvestment != null) {
+            System.out.println($userWithHighestInvestment);
+            res.setInvested($userWithHighestInvestment.getInvested());
+            res.setDirection($userWithHighestInvestment.getAction());
+        }
+end
